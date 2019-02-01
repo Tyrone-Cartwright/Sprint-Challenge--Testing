@@ -1,21 +1,53 @@
 const express = require("express");
-// const db = require("../data/dbConfig.js");
 
-const server = express();
-
+server = express();
 server.use(express.json());
 
-server.post("/games", (req, res) => {
-  if (!req.body.title || !req.body.genre || !req.body.releaseYear) {
-    return res.status(422).json();
-  } else {
-    req.body.id = games[games.length - 1].id + 1;
-    return res.status(201).json(req.body);
-  }
-});
+const games = [];
+const emptyGames = () => (games.length = 0);
+const counter = (() => {
+  let id = 1;
+  return () => id++;
+})();
 
-server.get("/games", (req, res) => {
-  return res.status(200).json(games);
-});
+server
+  .post("/games", (req, res) => {
+    const { title, genre, releaseYear } = req.body;
 
-module.exports = server;
+    if (!title || !genre) {
+      res.sendStatus(422);
+    } else if (typeof title !== "string" || typeof genre !== "string") {
+      res.sendStatus(400);
+    } else if (releaseYear && typeof releaseYear === "string") {
+      res.sendStatus(400);
+    } else {
+      const duplicateTitle = games.find(game => game.title === title);
+
+      if (duplicateTitle) {
+        res.sendStatus(405);
+      } else {
+        const id = counter();
+        games.push({ id, title, genre, releaseYear });
+        res.status(201).json({ id });
+      }
+    }
+  })
+  .get("/games", (req, res) => {
+    res.status(200).json({ games: games });
+  })
+  .get("/games/:id", (req, res) => {
+    const { id } = req.params;
+
+    const game = games.find(game => game.id === Number(id));
+
+    if (!game) {
+      res.sendStatus(405);
+    } else {
+      res.status(200).json({ game });
+    }
+  });
+
+module.exports = {
+  server,
+  emptyGames
+};
